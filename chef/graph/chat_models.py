@@ -1,6 +1,6 @@
 from langchain.chat_models import init_chat_model
-from recipe_ingest.graph.tools import transcription_tools
 
-model = init_chat_model("google_genai:gemini-3-flash-preview", temperature=0)
+from chef.constants import CHEF_MODEL, SUMMARIZATION_MODEL
 
-model_with_tools = model.bind_tools(transcription_tools)
+chef_model = init_chat_model(CHEF_MODEL, temperature=0)
+summarization_model = init_chat_model(SUMMARIZATION_MODEL, temperature=0)
