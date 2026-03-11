@@ -1,7 +1,8 @@
-import json
 import logging
 
 from langchain_core.messages import AIMessage, SystemMessage
+from langgraph.types import Command
+from langgraph.graph import END
 
 from chef.graph.state import (
     ChefState,
@@ -12,19 +13,9 @@ from chef.graph.state import (
 )
 from chef.graph.chat_models import chef_model
 from chef.graph.prompts import SYSTEM_PROMPT
+from chef.graph.utils import format_deviations
 
 logger = logging.getLogger(__name__)
-
-
-def _format_deviations_section(state: ChefState) -> str:
-    deviations = state.get("deviations", [])
-    if not deviations:
-        return "No deviations from the base recipe so far."
-
-    return json.dumps(
-        [d.model_dump(mode="json") for d in deviations],
-        indent=2,
-    )
 
 
 def _format_conversation_summary_section(state: ChefState) -> str:
@@ -43,14 +34,16 @@ def _build_system_prompt(state: ChefState) -> str:
         current_step=dish["current_step"],
         total_steps=len(recipe.steps),
         step_status=dish["step_status"].value,
-        deviations_section=_format_deviations_section(state),
+        deviations_section=format_deviations(
+            state, empty="No deviations from the base recipe so far."
+        ),
         conversation_summary_section=_format_conversation_summary_section(state),
         base_recipe=recipe.model_dump_json(indent=2),
     )
 
 
-def process_request(state: ChefState) -> dict:
-    """Main reasoning node. Classifies user intent and responds or flags for routing."""
+def process_request(state: ChefState) -> Command:
+    """Main reasoning node. Classifies user intent and responds or routes to deviation handler."""
     system_prompt = _build_system_prompt(state)
 
     model_with_structure = chef_model.with_structured_output(ProcessRequestOutput)
@@ -63,25 +56,34 @@ def process_request(state: ChefState) -> dict:
 
     logger.info("process_request classified as: %s", response.__class__.__name__)
 
-    result: dict = {}
-
     if isinstance(response, SimpleQueryResponse):
-        result["response_message"] = response.response_message
-        result["messages"] = [AIMessage(content=response.response_message)]
+        return Command(
+            goto=END,
+            update={
+                "response_message": response.response_message,
+                "messages": [AIMessage(content=response.response_message)],
+            },
+        )
 
     elif isinstance(response, StepChangeResponse):
-        result["response_message"] = response.response_message
-        result["messages"] = [AIMessage(content=response.response_message)]
+        update: dict = {
+            "response_message": response.response_message,
+            "messages": [AIMessage(content=response.response_message)],
+        }
         if response.new_step is not None:
-            result["dish_state"] = {
+            update["dish_state"] = {
                 **state["dish_state"],
                 "current_step": response.new_step,
             }
+        return Command(goto=END, update=update)
 
-    elif isinstance(response, DeviationResponse):
-        result["routing"] = {
-            "deviation_flag": response.sub_type,
-            "deviation_type": response.deviation_type,
-        }
-
-    return result
+    else:  # DeviationResponse
+        return Command(
+            goto="handle_deviation",
+            update={
+                "routing": {
+                    "deviation_flag": response.sub_type,
+                    "deviation_type": response.deviation_type,
+                }
+            },
+        )

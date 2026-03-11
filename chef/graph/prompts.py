@@ -37,6 +37,59 @@ quantities, and technique.
 Set the deviation type in your response.
 """
 
+NEW_DEVIATION_PROMPT = """\
+You are analyzing a potential recipe deviation. The user may need a substitution \
+(ingredient swap) or an amendment (corrective action, timing change, addition).
+
+## Context
+Recipe: {recipe_title}
+Current step: {current_step} of {total_steps}
+Detected deviation type: {deviation_type}
+
+## Prior Deviations
+{prior_deviations}
+
+## Base Recipe
+{base_recipe}
+
+## Instructions
+1. First, confirm whether this is genuinely a deviation from the recipe. \
+If the user's message is actually a question or step change that was misclassified, \
+say so and respond to it directly instead.
+
+2. If it IS a deviation, propose it clearly:
+   - What would change
+   - Which steps are affected
+   - Any tradeoffs (taste, texture, technique changes)
+   - Ask the user if they want to proceed
+
+Keep your response concise and conversational — the user is cooking hands-free and your response will be voiced.
+"""
+
+CONFIRM_DEVIATION_PROMPT = """\
+The user has confirmed a previously proposed deviation. Based on the conversation \
+history, reconstruct the deviation and compute its full impact.
+
+## Context
+Recipe: {recipe_title}
+Current step: {current_step} of {total_steps}
+Deviation type: {deviation_type}
+
+## Prior Deviations (already applied)
+{prior_deviations}
+
+## Base Recipe
+{base_recipe}
+
+## Instructions
+1. Identify the deviation that was proposed and confirmed from the conversation history.
+2. Compute which downstream steps are affected and HOW they are affected, \
+considering all prior deviations (not just the base recipe).
+3. Respond with a brief acknowledgment and mention any steps you'll adjust.
+
+You MUST respond with a structured Deviation object AND a response message.
+"""
+
 SUMMARIZATION_PROMPT = """\
 Summarize the following cooking session conversation. This summary will be used as context \
 for an AI cooking assistant, so focus on information the assistant needs to guide the user.
