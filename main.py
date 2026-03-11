@@ -29,7 +29,9 @@ def cmd_ingest(args: argparse.Namespace) -> None:
 
     agent_result = preprocess_and_invoke_agent(args.url)
 
-    out_path = f"{OUTPUT_DIR}/{agent_result['video_metadata']['title']}.json"
+    out_path = (
+        f"{OUTPUT_DIR}/{agent_result['recipe_details']['extracted_recipes']['id']}.json"
+    )
     with open(out_path, "w") as f:
         json.dump(agent_result, f, indent=2, default=pydantic_serializer)
 

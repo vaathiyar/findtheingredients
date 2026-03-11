@@ -106,7 +106,9 @@ class ExtractedRecipe(BaseModel):
     If the author didn't say it, it's not here.
     """
 
-    id: str = Field(description="kebab-case slug, e.g. 'ambur-chicken-biryani'")
+    id: str = Field(
+        description="kebab-case slug, e.g. 'ambur-chicken-biryani' with author/channel/source name"
+    )
     title: str = Field(description="Recipe title as the author names it")
     metadata: RecipeMetadata
     steps: list[Step]
