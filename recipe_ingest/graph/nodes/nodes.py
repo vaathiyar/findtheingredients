@@ -10,7 +10,6 @@ from shared.schemas.recipe import ExtractedRecipes
 
 class NodeNames(StrEnum):
     TRANSCRIBE_RECIPE_AUDIO = "transcribe_recipe_audio"
-    FORMAT_REQUIRED_INGREDIENTS = "format_required_ingredients"
     EXTRACT_RECIPE_FROM_TRANSCRIPT = "extract_recipe_from_transcript"
 
 
@@ -45,11 +44,6 @@ def transcribe_recipe_audio(state):
     transcribed_text = tool.invoke(tool_call["args"])
 
     return {"recipe_details": {"recipe_raw_text": transcribed_text}}
-
-
-def format_required_ingredients(state):
-    # No-op for now. implement to extract ingredients from the extracted recipes.
-    return state
 
 
 def extract_recipe_from_transcript(state):
@@ -97,6 +91,6 @@ def extract_recipe_from_transcript(state):
     return {
         "recipe_details": {
             **state["recipe_details"],
-            "recipe_details": result,
+            "extracted_recipe": result,
         }
     }

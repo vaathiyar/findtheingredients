@@ -48,7 +48,7 @@ def cmd_chat(args: argparse.Namespace) -> None:
     with open(args.recipe_file) as f:
         data = json.load(f)
 
-    recipes = data["recipe_details"]["recipe_details"]["extracted_recipes"]
+    recipes = data["recipe_details"]["extracted_recipe"]["extracted_recipes"]
 
     if len(recipes) == 1:
         recipe_data = recipes[0]
