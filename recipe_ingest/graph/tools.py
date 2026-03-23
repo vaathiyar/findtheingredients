@@ -1,5 +1,5 @@
 from langchain.tools import tool
-from recipe_ingest.services.transcription import transcribe
+from recipe_ingest.services.transcription.sarvam import transcribe
 
 
 @tool

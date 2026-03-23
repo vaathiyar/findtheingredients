@@ -1,7 +1,9 @@
 from sarvamai import SarvamAI
 import os
+from shared.config import settings
 from shared.constants import ARTIFACTS_DIR
 
+SARVAM_API_KEY = settings.sarvam_api_key
 SARVAM_OUTPUT_DIR = f"{ARTIFACTS_DIR}/transcription/sarvam_outputs"
 
 
@@ -32,7 +34,7 @@ def _save_transcription(transcription_file: str, content: str) -> None:
 # --- Main API function ---
 
 
-def translate_audio(audio_path: str):
+def transcribe(audio_path: str):
     os.makedirs(SARVAM_OUTPUT_DIR, exist_ok=True)
 
     # Check cache — skip the API call if we already have a transcription
@@ -41,7 +43,7 @@ def translate_audio(audio_path: str):
         print(f"[sarvam] Using cached transcription for {os.path.basename(audio_path)}")
         return cached
 
-    client = SarvamAI(api_subscription_key=os.getenv("SARVAM_API_KEY"))
+    client = SarvamAI(api_subscription_key=SARVAM_API_KEY)
 
     # Create batch job — change mode as needed
     job = client.speech_to_text_job.create_job(
