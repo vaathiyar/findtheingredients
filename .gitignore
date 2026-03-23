@@ -212,3 +212,4 @@ artifacts/
 .claude/
 .agents/
 .creds/
+.gemini/
