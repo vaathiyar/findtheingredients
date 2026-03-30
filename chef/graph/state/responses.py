@@ -1,33 +1,35 @@
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 from pydantic import BaseModel, Field
 
-from chef.graph.state.enums import DeviationFlag, DeviationType
+from chef.graph.state.enums import DeviationType
 
 
 class SimpleQueryResponse(BaseModel):
-    """Queries, clarifications, general conversation."""
+    """Questions, clarifications, general recipe chat."""
 
-    response_message: str
+    pass
 
 
 class StepChangeResponse(BaseModel):
-    """Step advancement or backtracking. If step-change is clear, populate new_step. Otherwise, use response_message for clarification."""
+    """Step advancement or backtracking."""
 
     new_step: Optional[int] = Field(
         None,
-        description=("New step number if the change is clear."),
+        description="New step number if the target is unambiguous.",
     )
-    response_message: str
 
 
 class DeviationResponse(BaseModel):
-    """Deviation detected — routes to handle_deviation node."""
+    """Ingredient substitution, corrective fix, or confirming a prior proposed change."""
 
-    sub_type: DeviationFlag
     deviation_type: DeviationType
+    is_confirmation: bool = Field(
+        False,
+        description="True only when the user is confirming a previously proposed change.",
+    )
 
 
-class ProcessRequestOutput(BaseModel):
+class ExtractAndRouteOutput(BaseModel):
     result: Union[
         SimpleQueryResponse,
         StepChangeResponse,

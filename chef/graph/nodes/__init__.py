@@ -1,19 +1,20 @@
+from chef.graph.nodes.node_names import NodeNames
 from chef.graph.nodes.summarize_if_needed import summarize_if_needed
-from chef.graph.nodes.process_request import process_request
-from chef.graph.nodes.handle_deviation import handle_deviation
-
-from enum import StrEnum
-
-
-class NodeNames(StrEnum):
-    SUMMARIZE_IF_NEEDED = "summarize_if_needed"
-    PROCESS_REQUEST = "process_request"
-    HANDLE_DEVIATION = "handle_deviation"
+from chef.graph.nodes.extract_and_route import extract_and_route
+from chef.graph.nodes.simple_query_response import simple_query_response
+from chef.graph.nodes.step_change_response import step_change_response
+from chef.graph.nodes.new_proposal import new_proposal
+from chef.graph.nodes.confirmation_compute import confirmation_compute
+from chef.graph.nodes.confirmation_ack import confirmation_ack
 
 
 __all__ = [
     "NodeNames",
     "summarize_if_needed",
-    "process_request",
-    "handle_deviation",
+    "extract_and_route",
+    "simple_query_response",
+    "step_change_response",
+    "new_proposal",
+    "confirmation_compute",
+    "confirmation_ack",
 ]

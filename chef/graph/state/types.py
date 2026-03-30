@@ -2,7 +2,7 @@ from typing import Optional
 from typing_extensions import TypedDict
 from pydantic import BaseModel, Field
 
-from chef.graph.state.enums import StepStatus, DeviationType, DeviationFlag
+from chef.graph.state.enums import StepStatus, DeviationType
 
 
 class DishState(TypedDict):
@@ -33,5 +33,5 @@ class Deviation(BaseModel):
 class RoutingContext(TypedDict):
     # ADR: Created this to explicitly separate intermediate routing data that does not belong to the core business state.
 
-    deviation_flag: Optional[DeviationFlag]
     deviation_type: Optional[DeviationType]
+    new_step: Optional[int]

@@ -1,13 +1,21 @@
 from __future__ import annotations
 
-import asyncio
-
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessageChunk
 from livekit.agents import llm, APIConnectOptions, DEFAULT_API_CONNECT_OPTIONS
 
 from chef.agent import chef_agent
+from chef.graph.nodes.node_names import NodeNames
 from chef.graph.state.enums import StepStatus
 from shared.schemas.recipe import ExtractedRecipe
+
+
+# Nodes that produce spoken output — their tokens are streamed to TTS
+SPEECH_NODES = {
+    NodeNames.SIMPLE_QUERY_RESPONSE,
+    NodeNames.STEP_CHANGE_RESPONSE,
+    NodeNames.NEW_PROPOSAL,
+    NodeNames.CONFIRMATION_ACK,
+}
 
 
 class ChefLLMStream(llm.LLMStream):
@@ -18,9 +26,13 @@ class ChefLLMStream(llm.LLMStream):
     which returns one of these stream objects. The framework then calls _run()
     and reads ChatChunk events off the internal channel to feed into TTS.
 
-    The "stream" abstraction exists so LLMs can emit tokens incrementally
-    (good for latency). We emit a single chunk since LangGraph returns a
-    complete response, not a token stream.
+    astream with stream_mode=["values","messages"] yields two event types:
+      ("values", full_state)         — emitted after each node completes
+      ("messages", (chunk, metadata)) — emitted per token during a node's LLM call
+
+    We push tokens to _event_ch only from SPEECH_NODES so TTS starts on the
+    first token of the response rather than waiting for the full graph to finish.
+    State is persisted via "values" events, making interruptions safe.
     """
 
     def __init__(
@@ -34,11 +46,6 @@ class ChefLLMStream(llm.LLMStream):
         self._chef_llm = chef_llm
 
     async def _run(self) -> None:
-        # chat_ctx is LiveKit's view of the conversation history (all turns).
-        # We only care about the latest user message — our LangGraph agent
-        # maintains its own state and message history independently.
-        # chat_ctx.items is a list[ChatItem] — items can be messages, function
-        # calls, or handoffs. We filter to the latest user ChatMessage only.
         user_text = ""
         for item in reversed(self.chat_ctx.items):
             if item.type == "message" and item.role == "user":
@@ -48,31 +55,33 @@ class ChefLLMStream(llm.LLMStream):
         if not user_text:
             return
 
-        # Append the user's utterance to the LangGraph state, then invoke.
-        # asyncio.to_thread offloads the synchronous graph.invoke() onto a
-        # thread pool so we don't block the event loop during graph execution.
-        self._chef_llm._state["messages"] = self._chef_llm._state.get(
-            "messages", []
-        ) + [HumanMessage(content=user_text)]
-
-        result = await asyncio.to_thread(chef_agent.invoke, self._chef_llm._state)
-        self._chef_llm._state = result
-
-        response = result.get("response_message", "")
-        if not response:
-            return
-
-        # Push the response into the channel as a ChatChunk.
-        # The framework reads from this channel and pipes the text to TTS.
-        self._event_ch.send_nowait(
-            llm.ChatChunk(
-                id=self._chef_llm.label,
-                delta=llm.ChoiceDelta(
-                    role="assistant",
-                    content=response,
-                ),
-            )
+        self._chef_llm._state["messages"] = (
+            self._chef_llm._state.get("messages", []) + [HumanMessage(content=user_text)]
         )
+
+        async for chunk_type, data in chef_agent.astream(
+            self._chef_llm._state, stream_mode=["values", "messages"]
+        ):
+            if chunk_type == "values":
+                # Full state snapshot after each node — keeps state current even if interrupted
+                self._chef_llm._state = data
+            elif chunk_type == "messages":
+                msg, metadata = data
+                node = metadata.get("langgraph_node", "")
+                if (
+                    isinstance(msg, AIMessageChunk)
+                    and node in SPEECH_NODES
+                    and msg.content
+                ):
+                    self._event_ch.send_nowait(
+                        llm.ChatChunk(
+                            id=self._chef_llm.label,
+                            delta=llm.ChoiceDelta(
+                                role="assistant",
+                                content=msg.content,
+                            ),
+                        )
+                    )
 
 
 class ChefLLM(llm.LLM):
@@ -94,7 +103,7 @@ class ChefLLM(llm.LLM):
             "deviations": [],
             "messages": [],
             "conversation_summary": "",
-            "routing": {"deviation_flag": None, "deviation_type": None},
+            "routing": {"deviation_type": None, "new_step": None},
             "context_note": "",
             "response_message": "",
         }

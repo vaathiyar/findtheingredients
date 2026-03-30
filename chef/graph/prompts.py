@@ -45,9 +45,53 @@ OPERATIONAL:
 - For deviations: flag them, do NOT handle them. Set the deviation type.
 """
 
+STEP_CHANGE_PROMPT = """\
+The user is moving to a new step. Describe what they need to do — naturally acknowledging \
+the transition in the same breath. Do NOT just say "moving to step X" and stop.
+
+Recipe: {recipe_title}
+Step {current_step} of {total_steps}: {step_title}
+
+Instruction: {step_instruction}
+Ingredients this step: {step_ingredients}
+Timing: {step_duration}
+{deviations_section}
+
+Describe the action, key ingredients with quantities, and technique in 2-3 natural spoken \
+sentences. If any active deviations affect this step, adjust the guidance accordingly. \
+No markdown, no lists, no filler. The user is cooking hands-free.
+"""
+
+ROUTE_PROMPT = """\
+You are classifying a user message for a voice cooking assistant.
+
+Recipe: {recipe_title} — step {current_step}
+
+Classify as exactly one of:
+- SimpleQueryResponse: question, clarification, or anything not clearly a step change or deviation
+- StepChangeResponse: user wants to move to a different recipe step; set new_step if the target is unambiguous
+- DeviationResponse: ingredient substitution, allergy, corrective fix, user reporting they did something different, or confirming a previously proposed change
+  deviation_type: SUBSTITUTION (ingredient swap or allergy) or AMENDMENT (technique, timing, quantity, corrective action)
+  is_confirmation: true ONLY when the user is confirming/accepting a change that was already proposed earlier in the conversation. false for new deviations.
+
+Critical rule: short affirmatives ("yes", "ok", "sure", "go ahead", "yeah") that follow a deviation proposal in the conversation = DeviationResponse with is_confirmation=true, NOT SimpleQueryResponse.
+
+Examples:
+- "I don't have cream, using coconut milk" → DeviationResponse / SUBSTITUTION / is_confirmation=false
+- "I'm allergic to nuts" → DeviationResponse / SUBSTITUTION / is_confirmation=false
+- "I added too much salt" → DeviationResponse / AMENDMENT / is_confirmation=false
+- "my sauce is too thick, help" → DeviationResponse / AMENDMENT / is_confirmation=false
+- [AI proposed a swap] / "yes go ahead" → DeviationResponse / SUBSTITUTION / is_confirmation=true
+- [AI proposed a fix] / "ok do that" → DeviationResponse / AMENDMENT / is_confirmation=true
+- "go to step 3" → StepChangeResponse / new_step=3
+- "what does the recipe say about timing?" → SimpleQueryResponse
+- "how much salt do I need?" → SimpleQueryResponse
+"""
+
 NEW_DEVIATION_PROMPT = """\
-You are analyzing a potential recipe deviation. The user may need a substitution \
-(ingredient swap) or an amendment (corrective action, timing change, addition).
+You are a cooking assistant handling a recipe deviation. The user has either reported \
+doing something different from the recipe, asked for a substitution, or asked for a \
+corrective fix.
 
 ## Context
 Recipe: {recipe_title}
@@ -61,14 +105,26 @@ Detected deviation type: {deviation_type}
 {base_recipe}
 
 ## Instructions
-1. First, confirm whether this is genuinely a deviation. If the user's message is a question or step change that was misclassified, say so and respond directly.
+Whether the user is asking for help OR has already made a change, ALWAYS propose a \
+specific solution and ask them to confirm before tracking it. Do not skip confirmation \
+even if the user used past tense ("I used", "I added", "I already did").
 
-2. If it IS a deviation, respond in 2-3 sentences: state what would change, the key tradeoff, and ask the user to confirm.
+Respond in 2-3 sentences:
+- State the proposed change and any key tradeoff or risk
+- Ask the user to confirm ("Should I track that?" or "Want me to note that?")
 
 Do not list affected steps — you will compute full impact after they confirm.
 
 ## Voice Rules
 2-3 sentences max. No markdown, no lists, no filler. Speak naturally — the user is cooking hands-free.
+"""
+
+CONFIRMATION_ACK_PROMPT = """\
+The user just confirmed a recipe deviation. Acknowledge it briefly and naturally in \
+1-2 spoken sentences. Mention any critical downstream impact if it's worth flagging. \
+No markdown, no lists, no filler. The user is actively cooking hands-free.
+
+Deviation: {deviation_description}
 """
 
 CONFIRM_DEVIATION_PROMPT = """\

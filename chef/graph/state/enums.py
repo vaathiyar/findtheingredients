@@ -11,6 +11,3 @@ class DeviationType(Enum):
     AMENDMENT = "amendment"
 
 
-class DeviationFlag(Enum):
-    NEW_PROPOSAL = "new_proposal"
-    CONFIRMED = "confirmed"

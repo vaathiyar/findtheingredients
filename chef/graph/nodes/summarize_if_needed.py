@@ -20,7 +20,7 @@ def _estimate_token_count(messages: list) -> int:
     return sum(len(str(m.content)) for m in messages) // 4
 
 
-def summarize_if_needed(state: ChefState) -> dict:
+async def summarize_if_needed(state: ChefState) -> dict:
     """Summarize and trim conversation if messages exceed token budget."""
     messages = state["messages"]
     token_estimate = _estimate_token_count(messages)
@@ -44,7 +44,7 @@ def summarize_if_needed(state: ChefState) -> dict:
         existing_summary=existing_summary or "None",
     )
 
-    response = summarization_model.invoke([SystemMessage(content=prompt)])
+    response = await summarization_model.ainvoke([SystemMessage(content=prompt)])
 
     logger.info(
         "Summarized %d messages (est. %d tokens over budget)",
