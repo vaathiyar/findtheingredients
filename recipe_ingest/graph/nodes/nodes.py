@@ -25,7 +25,25 @@ class NodeNames(StrEnum):
     COMPILE_REQUIRED_INGREDIENTS = "compile_required_ingredients"
 
 
-@Timer(name="transcribe_recipe_audio", text="[transcribe_recipe_audio] finished in {:.2f}s", logger=logger.info)
+_EXTRACT_RECIPE_SYSTEM_PROMPT = """You are a recipe extraction engine. Convert raw recipe text into structured data following the provided schema. Rules:
+
+1. Extract only information the author provides. If the author didn't say it, the field is null or empty. Never infer, enrich, or fill gaps with general cooking knowledge.
+
+2. Rewrite for clarity, not for content. The input may be a spoken transcript or informal blog - rephrase for readability but do not add/remove information beyond what the author stated.
+
+3. The input may be messy (especially audio transcripts): filler words, repetition, corrections, tangents, sponsor segments. Extract the recipe, ignore the noise.
+
+4. Step boundaries - use the author's own pacing signals in the text:
+   - A new step begins when the author uses transitional language indicating a previous action is complete ("once...", "now...", "when...is done", etc) or describes a result/checkpoint/sensory cue before moving to the next action.
+   - Ingredients or actions listed together without any transitional break belong to the same step.
+   - Do NOT merge actions that span across transitional phrases into one step just because they happen in the same vessel or context."""
+
+
+@Timer(
+    name="transcribe_recipe_audio",
+    text="[transcribe_recipe_audio] finished in {:.2f}s",
+    logger=logger.info,
+)
 def transcribe_recipe_audio(state):
     audio_path = download_audio(state["video_url"], state["video_metadata"]["title"])
     tags = state["video_metadata"]["tags"]
@@ -59,27 +77,18 @@ def transcribe_recipe_audio(state):
     return {"recipe_details": {"recipe_raw_text": transcribed_text}}
 
 
-@Timer(name="extract_recipe_from_transcript", text="[extract_recipe_from_transcript] finished in {:.2f}s", logger=logger.info)
+@Timer(
+    name="extract_recipe_from_transcript",
+    text="[extract_recipe_from_transcript] finished in {:.2f}s",
+    logger=logger.info,
+)
 def extract_recipe_from_transcript(state):
     recipe_raw_text = state["recipe_details"]["recipe_raw_text"]
     video_metadata = state["video_metadata"]
 
     result = model.with_structured_output(ExtractedRecipes).invoke(
         [
-            SystemMessage(
-                content="""You are a recipe extraction engine. Convert raw recipe text into structured data following the provided schema. Rules: 
-
-                        1. Extract only information the author provides. If the author didn't say it, the field is null or empty. Never infer, enrich, or fill gaps with general cooking knowledge.
-
-                        2. Rewrite for clarity, not for content. The input may be a spoken transcript or informal blog - rephrase for readability but do not add/remove information beyond what the author stated.
-
-                        3. The input may be messy (especially audio transcripts): filler words, repetition, corrections, tangents, sponsor segments. Extract the recipe, ignore the noise.
-
-                        4. Step boundaries - use the author's own pacing signals in the text:
-                           - A new step begins when the author uses transitional language indicating a previous action is complete ("once...", "now...", "when...is done", etc) or describes a result/checkpoint/sensory cue before moving to the next action.
-                           - Ingredients or actions listed together without any transitional break belong to the same step.
-                           - Do NOT merge actions that span across transitional phrases into one step just because they happen in the same vessel or context."""
-            ),
+            SystemMessage(content=_EXTRACT_RECIPE_SYSTEM_PROMPT),
             HumanMessage(
                 content=f"""Extract the recipe from the following raw text.
                 <raw_text>
@@ -142,13 +151,19 @@ even if the author words it as "let's start by...". The voice agent will handle 
 7. Derive only from the recipe. Do not add generic mise en place advice not grounded in this recipe."""
 
 
-@Timer(name="generate_precook_briefing", text="[generate_precook_briefing] finished in {:.2f}s", logger=logger.info)
+@Timer(
+    name="generate_precook_briefing",
+    text="[generate_precook_briefing] finished in {:.2f}s",
+    logger=logger.info,
+)
 def generate_precook_briefing(state) -> dict:
     recipes = state["recipe_details"]["recipes"]
     briefings = []
 
     for i, recipe in enumerate(recipes):
-        logger.info(f"[precook_briefing] generating briefing {i + 1}/{len(recipes)}: '{recipe.title}'")
+        logger.info(
+            f"[precook_briefing] generating briefing {i + 1}/{len(recipes)}: '{recipe.title}'"
+        )
         briefing = model.with_structured_output(PreCookBriefing).invoke(
             [
                 SystemMessage(content=_PRECOOK_SYSTEM_PROMPT),
@@ -188,13 +203,19 @@ Do not infer optionality.
 Do not omit anything used in any step."""
 
 
-@Timer(name="compile_required_ingredients", text="[compile_required_ingredients] finished in {:.2f}s", logger=logger.info)
+@Timer(
+    name="compile_required_ingredients",
+    text="[compile_required_ingredients] finished in {:.2f}s",
+    logger=logger.info,
+)
 def compile_required_ingredients(state) -> dict:
     recipes = state["recipe_details"]["recipes"]
     all_ingredients = []
 
     for i, recipe in enumerate(recipes):
-        logger.info(f"[required_ingredients] compiling {i + 1}/{len(recipes)}: '{recipe.title}'")
+        logger.info(
+            f"[required_ingredients] compiling {i + 1}/{len(recipes)}: '{recipe.title}'"
+        )
         result = model.with_structured_output(_RecipeIngredientList).invoke(
             [
                 SystemMessage(content=_INGREDIENTS_SYSTEM_PROMPT),
@@ -206,7 +227,9 @@ def compile_required_ingredients(state) -> dict:
                 ),
             ]
         )
-        logger.info(f"[required_ingredients] done: {len(result.ingredients)} ingredients for '{recipe.title}'")
+        logger.info(
+            f"[required_ingredients] done: {len(result.ingredients)} ingredients for '{recipe.title}'"
+        )
         all_ingredients.append(result.ingredients)
 
     return {
