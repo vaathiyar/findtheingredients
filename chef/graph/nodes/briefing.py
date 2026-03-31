@@ -1,12 +1,15 @@
 import logging
 from typing import Union
 
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 
-from chef.graph.chat_models import response_model, route_model  # response_model: intro only
+from chef.graph.chat_models import (
+    response_model,
+    route_model,
+)  # response_model: intro only
 from chef.graph.nodes.node_names import NodeNames
 from chef.graph.prompts import BRIEFING_INTRO_PROMPT, BRIEFING_ROUTE_PROMPT
 from chef.graph.state import ChefState
@@ -51,7 +54,11 @@ async def briefing(state: ChefState) -> Command:
 
     # --- First turn: no user input yet — generate the opening intro ---
     if not messages:
-        summary = briefing_data.summary if briefing_data else f"Today we're making {recipe.title}."
+        summary = (
+            briefing_data.summary
+            if briefing_data
+            else f"Today we're making {recipe.title}."
+        )
 
         prompt = BRIEFING_INTRO_PROMPT.format(
             recipe_title=recipe.title,
@@ -59,10 +66,16 @@ async def briefing(state: ChefState) -> Command:
         )
 
         response_text = ""
-        async for chunk in response_model.astream([SystemMessage(content=prompt)]):
+        async for chunk in response_model.astream(
+            [SystemMessage(content=prompt), HumanMessage(content="Let's start!.")]
+        ):
             c = chunk.content
-            response_text += c if isinstance(c, str) else "".join(
-                p.get("text", "") if isinstance(p, dict) else str(p) for p in c
+            response_text += (
+                c
+                if isinstance(c, str)
+                else "".join(
+                    p.get("text", "") if isinstance(p, dict) else str(p) for p in c
+                )
             )
 
         logger.info("briefing intro generated (%d chars)", len(response_text))
@@ -78,17 +91,28 @@ async def briefing(state: ChefState) -> Command:
     summary = briefing_data.summary if briefing_data else ""
     summary_section = f"\nRecipe overview: {summary}" if summary else ""
 
-    raw: BriefingRouteOutput = await route_model.with_structured_output(BriefingRouteOutput).ainvoke(
-        [SystemMessage(content=BRIEFING_ROUTE_PROMPT.format(
-            recipe_title=recipe.title,
-            summary_section=summary_section,
-        ))] + messages
+    raw: BriefingRouteOutput = await route_model.with_structured_output(
+        BriefingRouteOutput
+    ).ainvoke(
+        [
+            SystemMessage(
+                content=BRIEFING_ROUTE_PROMPT.format(
+                    recipe_title=recipe.title,
+                    summary_section=summary_section,
+                )
+            )
+        ]
+        + messages
     )
     result = raw.result
     logger.info("briefing classified as: %s", result.__class__.__name__)
 
     if isinstance(result, BriefingDeviation):
-        target = NodeNames.CONFIRMATION_COMPUTE if result.is_confirmation else NodeNames.NEW_PROPOSAL
+        target = (
+            NodeNames.CONFIRMATION_COMPUTE
+            if result.is_confirmation
+            else NodeNames.NEW_PROPOSAL
+        )
         return Command(
             goto=target,
             update={"routing": {**routing, "deviation_type": result.deviation_type}},
