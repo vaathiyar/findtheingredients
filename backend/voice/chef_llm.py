@@ -11,7 +11,6 @@ from shared.schemas.recipe import ExtractedRecipe, PreCookBriefing
 
 # Nodes that produce spoken output — their tokens are streamed to TTS
 SPEECH_NODES = {
-    NodeNames.BRIEFING,
     NodeNames.SIMPLE_QUERY_RESPONSE,
     NodeNames.STEP_CHANGE_RESPONSE,
     NodeNames.NEW_PROPOSAL,
