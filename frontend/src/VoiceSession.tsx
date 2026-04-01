@@ -62,7 +62,7 @@ function AgentView({ recipeTitle, onEnd }: { recipeTitle: string; onEnd: () => v
   return (
     <div className="session-page">
       <header className="session-header">
-        <span className="session-wordmark">Sous</span>
+        <span className="session-wordmark">Suvai</span>
         <span className="session-recipe">{recipeTitle}</span>
         <span className={pillClass}>{label}</span>
       </header>
