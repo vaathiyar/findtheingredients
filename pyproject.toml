@@ -5,6 +5,7 @@ description = "A sous chef that understands and helps you cook recipes."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "codetiming>=1.4.0",
     "dotenv>=0.9.9",
     "fastapi>=0.135.1",
     "langchain>=1.2.10",
@@ -14,8 +15,11 @@ dependencies = [
     "livekit-api>=1.1.0",
     "livekit-plugins-google>=1.4.5",
     "livekit-plugins-groq>=1.4.5",
+    "psycopg2-binary>=2.9.11",
     "pydantic-settings>=2.13.1",
     "sarvamai>=0.1.25",
+    "sqlalchemy>=2.0.48",
+    "sqlalchemy-cockroachdb>=2.0.3",
     "uvicorn[standard]>=0.41.0",
     "yt-dlp>=2026.2.4",
 ]
