@@ -59,7 +59,7 @@ export default function RecipeDetailPage({
     setLoading(true);
     setFetchError(false);
     setChecked(new Set());
-    fetch(`/api/voice/recipes/${recipeId}`)
+    fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/voice/recipes/${recipeId}`)
       .then((r) => {
         if (!r.ok) throw new Error("not found");
         return r.json();

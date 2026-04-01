@@ -4,6 +4,9 @@ import RecipeDetailPage from "./RecipeDetailPage";
 import VoiceSession from "./VoiceSession";
 import type { Recipe, SessionInfo } from "./types";
 
+const API_BASE = import.meta.env.VITE_BACKEND_API_URL;
+if (!API_BASE) throw new Error("VITE_BACKEND_API_URL is not set");
+
 type View = "list" | "detail" | "session";
 
 export default function App() {
@@ -14,7 +17,7 @@ export default function App() {
   const [sessionLoading, setSessionLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/voice/recipes")
+    fetch(`${API_BASE}/api/voice/recipes`)
       .then((r) => r.json())
       .then(setRecipes)
       .catch(console.error);
@@ -24,7 +27,7 @@ export default function App() {
     if (!selected) return;
     setSessionLoading(true);
     try {
-      const res = await fetch("/api/voice/token", {
+      const res = await fetch(`${API_BASE}/api/voice/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ recipe_id: selected.id }),
