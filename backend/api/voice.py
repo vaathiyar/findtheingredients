@@ -6,30 +6,16 @@ from livekit import api
 from pydantic import BaseModel
 
 from backend.config import settings
-from shared.db import create_tables, get_recipe, list_recipes
+from backend.auth.deps import CurrentUserDep
+from shared.constants import SESSIONS_LIMIT
+from shared.db.recipes import get_recipe_by_id
+from shared.db.users import count_cooking_sessions, create_cooking_session
 
-router = APIRouter(prefix="/api/voice")
-
-create_tables()
-
-
-@router.get("/recipes")
-async def list_recipes_endpoint() -> list[dict]:
-    """List all ingested recipes available for a cooking session."""
-    return list_recipes()
-
-
-@router.get("/recipes/{recipe_id}")
-async def get_recipe_detail(recipe_id: str) -> dict:
-    """Full recipe data — ingredients, precook briefing, and source URL for the detail page."""
-    data = get_recipe(recipe_id)
-    if data is None:
-        raise HTTPException(status_code=404, detail=f"Recipe '{recipe_id}' not found")
-    return data.model_dump()
+router = APIRouter(prefix="/api/voice", tags=["voice"])
 
 
 class TokenRequest(BaseModel):
-    recipe_id: str
+    recipe_id: uuid.UUID
 
 
 class TokenResponse(BaseModel):
@@ -39,19 +25,12 @@ class TokenResponse(BaseModel):
 
 
 @router.post("/token", response_model=TokenResponse)
-async def create_token(req: TokenRequest) -> TokenResponse:
-    """
-    Entry point for starting a voice cooking session.
-
-    LiveKit works like this:
-      1. Your backend creates a room on the LiveKit server.
-      2. Your backend dispatches an agent worker to that room.
-      3. Your backend issues a signed JWT (token) to the frontend.
-      4. The frontend uses that token to join the same room via WebRTC.
-      5. The agent worker and the user are now in the same room, exchanging audio.
-    """
-    if get_recipe(req.recipe_id) is None:
+async def create_token(req: TokenRequest, user: CurrentUserDep) -> TokenResponse:
+    if get_recipe_by_id(req.recipe_id) is None:
         raise HTTPException(status_code=404, detail=f"Recipe '{req.recipe_id}' not found")
+
+    if count_cooking_sessions(user.id) >= SESSIONS_LIMIT:
+        raise HTTPException(status_code=403, detail="Demo limit reached")
 
     room_name = f"sous-{uuid.uuid4().hex[:8]}"
 
@@ -65,19 +44,21 @@ async def create_token(req: TokenRequest) -> TokenResponse:
         api.CreateAgentDispatchRequest(
             agent_name="sous-chef",
             room=room_name,
-            metadata=json.dumps({"recipe_id": req.recipe_id}),
+            metadata=json.dumps({"recipe_id": str(req.recipe_id)}),
         )
     )
 
     token = (
         api.AccessToken(settings.livekit_api_key, settings.livekit_api_secret)
-        .with_identity("user")
+        .with_identity(str(user.id))
         .with_name("User")
         .with_grants(api.VideoGrants(room_join=True, room=room_name))
         .to_jwt()
     )
 
     await livekit_api.aclose()
+
+    create_cooking_session(user.id, req.recipe_id, room_name)
 
     return TokenResponse(
         token=token,

@@ -1,1 +1,2 @@
 ARTIFACTS_DIR = "artifacts"
+SESSIONS_LIMIT = 5

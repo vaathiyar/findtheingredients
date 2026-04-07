@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     artifacts_dir: str = "artifacts"
     sql_database_url: str = ""
 
+    clerk_issuer: str = ""
+    clerk_secret_key: str = ""
+
     cors_origins: list[str] = ["http://localhost:5173"]
 
     # Voice pipeline — swap model/voice here without touching agent.py

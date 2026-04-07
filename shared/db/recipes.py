@@ -1,4 +1,5 @@
 import uuid
+from uuid import UUID
 
 from pydantic import BaseModel
 from sqlalchemy.dialects.postgresql import insert
@@ -74,31 +75,32 @@ def list_recipes() -> list[dict]:
         session.close()
 
 
-def _fetch_row(session, recipe_id: str):
-    """Fetch a RecipeRow by UUID id or slug."""
-    try:
-        uid = uuid.UUID(recipe_id)
-        return session.query(RecipeRow).filter(RecipeRow.id == uid).first()
-    except ValueError:
-        return session.query(RecipeRow).filter(RecipeRow.slug == recipe_id).first()
+def _row_to_recipe_data(row: RecipeRow) -> RecipeData:
+    return RecipeData(
+        id=str(row.id),
+        slug=row.slug,
+        title=row.title,
+        cuisine=row.cuisine,
+        source_url=row.source_url,
+        recipe=ExtractedRecipe(**row.full_recipe),
+        precook_briefing=PreCookBriefing(**row.precook_data) if row.precook_data else None,
+        ingredients=[RecipeIngredient(**i) for i in row.ingredients_data] if row.ingredients_data else None,
+    )
 
 
-def get_recipe(recipe_id: str) -> RecipeData | None:
-    """Fetch full recipe data in one query. Returns None if not found."""
+def get_recipe_by_id(recipe_id: UUID) -> RecipeData | None:
     session = get_session()
     try:
-        row = _fetch_row(session, recipe_id)
-        if row is None:
-            return None
-        return RecipeData(
-            id=str(row.id),
-            slug=row.slug,
-            title=row.title,
-            cuisine=row.cuisine,
-            source_url=row.source_url,
-            recipe=ExtractedRecipe(**row.full_recipe),
-            precook_briefing=PreCookBriefing(**row.precook_data) if row.precook_data else None,
-            ingredients=[RecipeIngredient(**i) for i in row.ingredients_data] if row.ingredients_data else None,
-        )
+        row = session.query(RecipeRow).filter(RecipeRow.id == recipe_id).first()
+        return _row_to_recipe_data(row) if row else None
+    finally:
+        session.close()
+
+
+def get_recipe_by_slug(slug: str) -> RecipeData | None:
+    session = get_session()
+    try:
+        row = session.query(RecipeRow).filter(RecipeRow.slug == slug).first()
+        return _row_to_recipe_data(row) if row else None
     finally:
         session.close()

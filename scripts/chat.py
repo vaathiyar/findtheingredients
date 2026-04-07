@@ -5,12 +5,14 @@ from langchain_core.messages import HumanMessage
 
 from chef.agent import chef_agent
 from chef.graph.state.enums import StepStatus
-from shared.db import get_recipe, list_recipes
+from uuid import UUID
+
+from shared.db import get_recipe_by_id, list_recipes
 
 
 def cmd_chat(args: argparse.Namespace) -> None:
     """Interactive chat session with the chef agent over a recipe loaded from DB."""
-    result = get_recipe(args.recipe_id)
+    result = get_recipe_by_id(UUID(args.recipe_id))
     if result is None:
         print(f"Recipe '{args.recipe_id}' not found in DB. Run 'ingest' first.")
         return

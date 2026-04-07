@@ -6,7 +6,9 @@ from livekit.plugins import google, silero
 
 from backend.config import settings
 from backend.voice.chef_llm import ChefLLM
-from shared.db import get_recipe
+from uuid import UUID
+
+from shared.db import get_recipe_by_id
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +29,7 @@ async def entrypoint(ctx: JobContext):
         logger.error("No recipe_id in job metadata")
         return
 
-    result = get_recipe(recipe_id)
+    result = get_recipe_by_id(UUID(recipe_id))
     if result is None:
         logger.error(f"Recipe '{recipe_id}' not found in DB")
         return
