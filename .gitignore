@@ -213,3 +213,8 @@ artifacts/
 .agents/
 .creds/
 .gemini/
+.kt/
+.playwright-mcp/
+.env*
+CLAUDE.md
+docs
