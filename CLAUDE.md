@@ -61,6 +61,10 @@ YouTube URL
 - `langgraph` for agent graph orchestration
 - Model configs live in `chef/graph/chat_models.py` and `recipe_ingest/graph/chat_models.py`
 
+## Rules
+
+- Never read `.env`, `.env.local`, `.env.*`, or any secrets/credentials files.
+
 ## Agent Rules
 
 `.agents/rules/senior-staff-engineer.md` is loaded as an always-on rule. Before implementing any change:
