@@ -74,18 +74,7 @@
   border: 1px solid var(--fire);
 }
 
-.detail-start-btn--ghost {
-  background: transparent;
-  color: var(--fire);
-  border: 1px solid var(--fire-mid);
-}
-
-.detail-start-btn--ghost:hover:not(:disabled) {
-  background: var(--fire-dim);
-  border-color: var(--fire);
-}
-
-.detail-start-btn:not(.detail-start-btn--ghost):hover:not(:disabled) { background: var(--fire-dk); }
+.detail-start-btn:hover:not(:disabled) { background: var(--fire-dk); }
 .detail-start-btn:active:not(:disabled) { transform: scale(0.97); }
 .detail-start-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 

@@ -150,6 +150,26 @@
   transform: translateX(3px);
 }
 
+/* Loading spinner */
+.list-loading {
+  display: flex;
+  justify-content: center;
+  padding: 72px 0 40px;
+}
+
+.list-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--fire);
+  border-radius: 50%;
+  animation: list-spin 0.5s linear infinite;
+}
+
+@keyframes list-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Empty state */
 .list-empty {
   padding: 72px 0 40px;

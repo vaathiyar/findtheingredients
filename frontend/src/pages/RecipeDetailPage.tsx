@@ -55,7 +55,7 @@ export default function RecipeDetailPage() {
         <span className="wordmark">Suvai</span>
         <span className="detail-header-title">{data?.title ?? slug}</span>
         {authLoaded && (
-          <button className="detail-start-btn detail-start-btn--ghost" onClick={handleStartCooking}>
+          <button className="detail-start-btn" onClick={handleStartCooking}>
             {isSignedIn ? 'Begin Cooking' : 'Sign in'}
           </button>
         )}

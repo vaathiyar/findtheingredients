@@ -6,7 +6,7 @@ import { SessionsRemaining } from '@/components/SessionsRemaining';
 
 export default function RecipeListPage() {
   const navigate = useNavigate();
-  const { recipes } = useRecipes();
+  const { recipes, loading } = useRecipes();
 
   return (
     <div className="list-page">
@@ -33,7 +33,11 @@ export default function RecipeListPage() {
           )}
         </div>
 
-        {recipes.length === 0 ? (
+        {loading ? (
+          <div className="list-loading">
+            <span className="list-spinner" />
+          </div>
+        ) : recipes.length === 0 ? (
           <div className="list-empty">
             <p className="list-empty-title">No recipes yet.</p>
             <p className="list-empty-body">Your kitchen is empty - check back soon.</p>
