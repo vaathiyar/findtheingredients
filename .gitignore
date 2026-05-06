@@ -217,4 +217,3 @@ artifacts/
 .playwright-mcp/
 .env*
 CLAUDE.md
-docs
